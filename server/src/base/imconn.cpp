@@ -10,9 +10,9 @@
 //static uint64_t g_send_pkt_cnt = 0;		// 发送数据包总数
 //static uint64_t g_recv_pkt_cnt = 0;		// 接收数据包总数
 
-static CImConn* FindImConn(ConnMap_t* imconn_map, net_handle_t handle)
+static CImConn *FindImConn(ConnMap_t *imconn_map, net_handle_t handle)
 {
-	CImConn* pConn = NULL;
+	CImConn *pConn = NULL;
 	ConnMap_t::iterator iter = imconn_map->find(handle);
 	if (iter != imconn_map->end())
 	{
@@ -23,7 +23,7 @@ static CImConn* FindImConn(ConnMap_t* imconn_map, net_handle_t handle)
 	return pConn;
 }
 
-void imconn_callback(void* callback_data, uint8_t msg, uint32_t handle, void* pParam)
+void imconn_callback(void *callback_data, uint8_t msg, uint32_t handle, void *pParam)
 {
 	NOTUSED_ARG(handle);
 	NOTUSED_ARG(pParam);
@@ -31,8 +31,8 @@ void imconn_callback(void* callback_data, uint8_t msg, uint32_t handle, void* pP
 	if (!callback_data)
 		return;
 
-	ConnMap_t* conn_map = (ConnMap_t*)callback_data;
-	CImConn* pConn = FindImConn(conn_map, handle);
+	ConnMap_t *conn_map = (ConnMap_t *)callback_data;
+	CImConn *pConn = FindImConn(conn_map, handle);
 	if (!pConn)
 		return;
 
@@ -77,10 +77,10 @@ CImConn::~CImConn()
 	//log("CImConn::~CImConn, handle=%d ", m_handle);
 }
 
-int CImConn::Send(void* data, int len)
+int CImConn::Send(void *data, int len)
 {
 	m_last_send_tick = get_tick_count();
-//	++g_send_pkt_cnt;
+	//	++g_send_pkt_cnt;
 
 	if (m_busy)
 	{
@@ -90,14 +90,17 @@ int CImConn::Send(void* data, int len)
 
 	int offset = 0;
 	int remain = len;
-	while (remain > 0) {
+	while (remain > 0)
+	{
 		int send_size = remain;
-		if (send_size > NETLIB_MAX_SOCKET_BUF_SIZE) {
+		if (send_size > NETLIB_MAX_SOCKET_BUF_SIZE)
+		{
 			send_size = NETLIB_MAX_SOCKET_BUF_SIZE;
 		}
 
-		int ret = netlib_send(m_handle, (char*)data + offset , send_size);
-		if (ret <= 0) {
+		int ret = netlib_send(m_handle, (char *)data + offset, send_size);
+		if (ret <= 0)
+		{
 			ret = 0;
 			break;
 		}
@@ -108,14 +111,14 @@ int CImConn::Send(void* data, int len)
 
 	if (remain > 0)
 	{
-		m_out_buf.Write((char*)data + offset, remain);
+		m_out_buf.Write((char *)data + offset, remain);
 		m_busy = true;
 		log("send busy, remain=%d ", m_out_buf.GetWriteOffset());
 	}
-    else
-    {
-        OnWriteCompelete();
-    }
+	else
+	{
+		OnWriteCompelete();
+	}
 
 	return len;
 }
@@ -138,28 +141,31 @@ void CImConn::OnRead()
 		m_last_recv_tick = get_tick_count();
 	}
 
-    CImPdu* pPdu = NULL;
+	CImPdu *pPdu = NULL;
 	try
-    {
-		while ( ( pPdu = CImPdu::ReadPdu(m_in_buf.GetBuffer(), m_in_buf.GetWriteOffset()) ) )
+	{
+		while ((pPdu = CImPdu::ReadPdu(m_in_buf.GetBuffer(), m_in_buf.GetWriteOffset())))
 		{
-            uint32_t pdu_len = pPdu->GetLength();
-            
+			uint32_t pdu_len = pPdu->GetLength();
+
 			HandlePdu(pPdu);
 
 			m_in_buf.Read(NULL, pdu_len);
 			delete pPdu;
-            pPdu = NULL;
-//			++g_recv_pkt_cnt;
+			pPdu = NULL;
+			//			++g_recv_pkt_cnt;
 		}
-	} catch (CPduException& ex) {
+	}
+	catch (CPduException &ex)
+	{
 		log("!!!catch exception, sid=%u, cid=%u, err_code=%u, err_msg=%s, close the connection ",
-				ex.GetServiceId(), ex.GetCommandId(), ex.GetErrorCode(), ex.GetErrorMsg());
-        if (pPdu) {
-            delete pPdu;
-            pPdu = NULL;
-        }
-        OnClose();
+			ex.GetServiceId(), ex.GetCommandId(), ex.GetErrorCode(), ex.GetErrorMsg());
+		if (pPdu)
+		{
+			delete pPdu;
+			pPdu = NULL;
+		}
+		OnClose();
 	}
 }
 
@@ -168,14 +174,17 @@ void CImConn::OnWrite()
 	if (!m_busy)
 		return;
 
-	while (m_out_buf.GetWriteOffset() > 0) {
+	while (m_out_buf.GetWriteOffset() > 0)
+	{
 		int send_size = m_out_buf.GetWriteOffset();
-		if (send_size > NETLIB_MAX_SOCKET_BUF_SIZE) {
+		if (send_size > NETLIB_MAX_SOCKET_BUF_SIZE)
+		{
 			send_size = NETLIB_MAX_SOCKET_BUF_SIZE;
 		}
 
 		int ret = netlib_send(m_handle, m_out_buf.GetBuffer(), send_size);
-		if (ret <= 0) {
+		if (ret <= 0)
+		{
 			ret = 0;
 			break;
 		}
@@ -183,13 +192,10 @@ void CImConn::OnWrite()
 		m_out_buf.Read(NULL, ret);
 	}
 
-	if (m_out_buf.GetWriteOffset() == 0) {
+	if (m_out_buf.GetWriteOffset() == 0)
+	{
 		m_busy = false;
 	}
 
 	log("onWrite, remain=%d ", m_out_buf.GetWriteOffset());
 }
-
-
-
-
